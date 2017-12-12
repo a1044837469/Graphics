@@ -54,6 +54,7 @@ var camera, scene, renderer, mesh;
 var controls;
 var keyboard = new KeyboardState();
 var clock;
+var cameraHUD, sceneHUD;
 
 var car = new THREE.Object3D();
 var pos = new THREE.Vector3();
@@ -71,8 +72,31 @@ var camera3rd;
 init();
 animate();
 
+function initHUD() {
+
+  sceneHUD = new THREE.Scene();
+  cameraHUD = new THREE.OrthographicCamera(-10.5, 10.5, 10.5, -10.5, -10, 10);
+  cameraHUD.position.z = 5;
+  sceneHUD.add(cameraHUD);
+
+  var lineGeometry = new THREE.Geometry();
+  lineGeometry.vertices.push(new THREE.Vector3(-10, -10, 0),
+    new THREE.Vector3(10, -10, 0),
+    new THREE.Vector3(10, 10, 0),
+    new THREE.Vector3(-10, 10, 0),
+    new THREE.Vector3(-10, -10, 0));
+  var line = new THREE.Line(lineGeometry,
+    new THREE.LineBasicMaterial({
+      color: 0xffffff
+    }));
+  sceneHUD.add(line);
+  
+}
+
 
 function init() {
+
+	initHUD();
   
   clock = new THREE.Clock();
 
@@ -80,12 +104,16 @@ function init() {
   document.body.appendChild(container);
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 20000);
-  camera.position.z = 250;
   camera.position.y = 150;
+  camera.lookAt(new THREE.Vector3(0,0,0));
  
+  
+  camera3rd = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 1000);
+  
   // scene
 
   scene = new THREE.Scene();
+  scene.add(camera3rd);
 
 	gridxz = new THREE.GridHelper (200, 20,'red','white');
 	scene.add (gridxz);
@@ -159,14 +187,12 @@ function init() {
 	sphere3.position.set(90,10,-90);
 	
 	renderer = new THREE.WebGLRenderer();
-	renderer.setPixelRatio(window.devicePixelRatio);
 	renderer.setSize(window.innerWidth, window.innerHeight);
-	container.appendChild(renderer.domElement);
 	renderer.setClearColor (0x888888);
-
-	controls = new THREE.OrbitControls(camera, renderer.domElement);
-	camera.position.z = 200;
-	controls.enableKeys = false;
+	renderer.autoClear = false;
+	//controls = new THREE.OrbitControls(camera, renderer.domElement);
+	//camera.position.z = 200;
+	//controls.enableKeys = false;
   
 	document.body.appendChild(renderer.domElement);
   
@@ -264,7 +290,7 @@ function update(dt) {
 
 function animate() {
 
-	controls.update();
+	//controls.update();
 	
 	var dt = clock.getDelta();
 	update(dt);
@@ -273,15 +299,38 @@ function animate() {
 	car.position.copy(pos);
 	car.rotation.y = angle+Math.PI/2;
 	
-	
+	var cameraOffset = car.localToWorld (new THREE.Vector3(0,10,-10));
+	camera3rd.position.copy(cameraOffset);
+	camera3rd.lookAt(car.localToWorld (new THREE.Vector3(0, 0, 0)));
+  
 	requestAnimationFrame(animate);
 	render();
 
 }
 
 function render() {
+	var WW = window.innerWidth;
+	var HH = window.innerHeight;
 
-  renderer.render(scene, camera);
+	renderer.setScissorTest(true);
+	
+    renderer.setViewport(0, 0, WW / 2, HH);
+    camera.aspect = WW / 2 / HH;
+    camera.updateProjectionMatrix();
+    renderer.setScissor(0, 0, WW / 2, HH);
+    renderer.clear();
+    renderer.render(scene, camera);
+    renderer.render(sceneHUD, cameraHUD);
+
+    renderer.setViewport(WW / 2, 0, WW / 2, HH);
+	camera3rd.aspect = WW / 2 / HH;
+    camera3rd.updateProjectionMatrix();
+    renderer.setScissor(WW / 2, 0, WW / 2, HH);
+    renderer.clear();
+    renderer.render(scene, camera3rd);
+    renderer.render(sceneHUD, cameraHUD);
+
+  //renderer.render(scene, camera3rd);
 
 }
 
